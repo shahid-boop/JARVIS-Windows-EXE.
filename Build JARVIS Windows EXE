@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          path: repo
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -26,31 +28,32 @@ jobs:
       - name: Extract JARVIS ZIP
         shell: pwsh
         run: |
-          Expand-Archive `
-            -LiteralPath "JARVIS-OptiPlex-7060-GitHub-Actions-Windows-EXE.zip" `
-            -DestinationPath "source" `
-            -Force
+          $zip = "repo/JARVIS-OptiPlex-7060-GitHub-Actions-Windows-EXE.zip"
+          if (!(Test-Path $zip)) {
+            throw "JARVIS ZIP file not found: $zip"
+          }
+          Expand-Archive -LiteralPath $zip -DestinationPath "repo/source" -Force
 
       - name: Check project files
         shell: pwsh
         run: |
-          Get-ChildItem "source" -Recurse -Depth 2
-          if (!(Test-Path "source/pc_companion/jarvis_pc_server.py")) {
+          Get-ChildItem "repo/source" -Recurse -Depth 2
+          if (!(Test-Path "repo/source/pc_companion/jarvis_pc_server.py")) {
             throw "PC companion source file not found inside ZIP."
           }
-          if (!(Test-Path "source/pc_companion/requirements.txt")) {
+          if (!(Test-Path "repo/source/pc_companion/requirements.txt")) {
             throw "requirements.txt not found inside ZIP."
           }
 
       - name: Install dependencies
-        working-directory: source/pc_companion
+        working-directory: repo/source/pc_companion
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
 
       - name: Build EXE
-        working-directory: source/pc_companion
+        working-directory: repo/source/pc_companion
         run: |
           pyinstaller --noconfirm --clean --onefile --name JARVIS-PC jarvis_pc_server.py
 
@@ -58,5 +61,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: JARVIS-Windows-EXE
-          path: source/pc_companion/dist/JARVIS-PC.exe
+          path: repo/source/pc_companion/dist/JARVIS-PC.exe
           if-no-files-found: error
